@@ -5,15 +5,9 @@ import numpy as np
 from scipy.signal import butter, lfilter
 
 # Paths
-AUDIO_PATH = 'Data/Augmented'  # Path to the audio directory
+AUDIO_PATH = 'Data/AUDIO'  # Updated path to the audio directory
 OUTPUT_PATH = 'Data/Processed'  # Path where processed audio files will be saved
-
-# Define segment lengths for different audio types
-SEGMENT_LENGTHS = {
-    "breathing": 3,  # Breathing segments
-    "cough": 3,      # Cough segments
-    "speech": 3    # Speech segments
-}
+SEGMENT_LENGTH = 3  # Length of each segment in seconds
 
 # Ensure output directory exists
 os.makedirs(OUTPUT_PATH, exist_ok=True)
@@ -32,7 +26,7 @@ def bandpass_filter(data, lowcut, highcut, fs, order=5):
     return y
 
 # Function to process individual audio files
-def process_audio(file_path, output_dir, segment_length):
+def process_audio(file_path, output_dir, segment_length=SEGMENT_LENGTH):
     # Load the audio file
     y, sr = librosa.load(file_path, sr=44100)  # Using the sample rate of 44.1 kHz
     
@@ -59,15 +53,13 @@ total_files = sum([len(files) for _, _, files in os.walk(AUDIO_PATH)])
 for sound_category in os.listdir(AUDIO_PATH):
     category_path = os.path.join(AUDIO_PATH, sound_category)
     if os.path.isdir(category_path):
-        # Set segment length based on audio type
-        segment_length = SEGMENT_LENGTHS.get(sound_category, 3)  # Default to 3 seconds if type unknown
         output_category_dir = os.path.join(OUTPUT_PATH, sound_category)
         os.makedirs(output_category_dir, exist_ok=True)
         
         for audio_file in os.listdir(category_path):
             file_path = os.path.join(category_path, audio_file)
             if file_path.endswith('.flac'):
-                process_audio(file_path, output_category_dir, segment_length)
+                process_audio(file_path, output_category_dir)
                 processed_count += 1
                 print(f"Processed {processed_count}/{total_files} files")
 

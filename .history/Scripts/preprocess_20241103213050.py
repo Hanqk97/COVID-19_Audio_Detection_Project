@@ -5,7 +5,7 @@ import numpy as np
 from scipy.signal import butter, lfilter
 
 # Paths
-AUDIO_PATH = 'Data/Augmented'  # Path to the audio directory
+AUDIO_PATH = 'Data/AUDIO'  # Path to the audio directory
 OUTPUT_PATH = 'Data/Processed'  # Path where processed audio files will be saved
 
 # Define segment lengths for different audio types
