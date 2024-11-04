@@ -18,8 +18,11 @@ sample_rate = 44100  # Set sample rate for consistency
 # Count positive and negative samples from the metadata
 total_positive = metadata[metadata['COVID_STATUS'] == 'p'].shape[0]
 total_negative = metadata[metadata['COVID_STATUS'] == 'n'].shape[0]
-target_positive_count = total_negative  # We need exactly as many positives as negatives, i.e., 793
-augment_count_needed = target_positive_count - total_positive  # Required number of additional subjects
+augment_count_needed = total_negative - total_positive  # Required number of augmentations
+
+# Calculate number of augmentations per subject on average
+augment_per_subject = augment_count_needed // total_positive
+extra_augmentations_needed = augment_count_needed % total_positive  # Any remainder for extra augmentation
 
 # Define WavAugment transformations with output_type and sample_rate
 wav_augment = Compose(
@@ -49,7 +52,7 @@ def augment_audio(y, sr):
 
 # Set up metadata storage
 metadata_augmented = []
-total_positives_created = total_positive  # Start with the current count of positive samples
+augment_generated = 0  # Track total augmentations generated
 
 # Process each subject in metadata
 for _, row in metadata.iterrows():
@@ -72,24 +75,17 @@ for _, row in metadata.iterrows():
                 sf.write(original_path, y, sr)
                 metadata_augmented.append([subject_id, row['COVID_STATUS'], gender, file_type, 0])  # Original
                 
-                # Determine required number of augmentations for this subject
-                remaining_to_create = target_positive_count - total_positives_created
-                num_augmentations = min(4, remaining_to_create)  # Start with up to 4 augmentations
+                # Determine how many augmentations to create for this subject
+                num_augmentations = augment_per_subject + (1 if augment_generated < extra_augmentations_needed else 0)
                 
-                # Generate augmentations for this subject
+                # Generate required number of augmentations for this subject
                 for i in range(num_augmentations):
-                    if total_positives_created >= target_positive_count:
-                        break  # Stop if we reach the target positive count
-                        
                     augmented_version = augment_audio(y, sr)
-                    augmented_subject_id = f"{subject_id}_aug_{i + 1}"
-                    augmented_path = os.path.join(output_dir, f"{augmented_subject_id}_{file_type}.flac")
+                    augmented_path = os.path.join(output_dir, f"{subject_id}_aug_{i + 1}.flac")
                     sf.write(augmented_path, augmented_version, sr)
-                    metadata_augmented.append([augmented_subject_id, row['COVID_STATUS'], gender, file_type, 1])
+                    metadata_augmented.append([f"{subject_id}_aug_{i + 1}", row['COVID_STATUS'], gender, file_type, 1])
+                    augment_generated += 1
                     
-                    if file_type == 'speech':  # Increment count only after all 3 types are done for a subject
-                        total_positives_created += 1
-                
                 print(f"Processed positive sample: {subject_id} with {num_augmentations} augmentations.")
             else:
                 # For negative samples, simply copy the original file
@@ -105,4 +101,4 @@ metadata_df = pd.DataFrame(metadata_augmented, columns=['SUB_ID', 'COVID_STATUS'
 metadata_df.to_csv('Data/metadata_augmented.csv', index=False)
 
 print("Augmentation and metadata generation complete.")
-print(f"Total positive subjects now: {total_positives_created}, total target: {target_positive_count}")
+print(f"Total augmentations generated: {augment_generated}, total positive subjects now: {total_positive + augment_generated}")
