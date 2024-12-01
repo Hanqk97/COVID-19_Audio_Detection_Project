@@ -1,5 +1,0 @@
-# Ignore all files in the Data folder
-Data/*
-
-# Except this folder itself, so it remains in the repo
-!Data/
