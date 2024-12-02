@@ -47,15 +47,8 @@ def extract_features(file_path, sample_rate=16000, n_mfcc=40):
     return features
 
 # Process a single user ID
-def process_id(input_dir, output_dir, id_name, label, gender):
-    # Initialize features dictionary with label and gender
-    features = {
-        "label": label,
-        "gender": gender,
-        "cough": {},
-        "breathing": {},
-        "speech": {}
-    }
+def process_id(input_dir, output_dir, id_name):
+    features = {"cough": {}, "breathing": {}, "speech": {}}
 
     # Iterate over files for this ID
     for file_name in os.listdir(input_dir):
@@ -66,11 +59,9 @@ def process_id(input_dir, output_dir, id_name, label, gender):
         elif "speech" in file_name.lower():
             features["speech"] = extract_features(os.path.join(input_dir, file_name))
 
-    # Output path based on label and gender
-    output_dir_for_id = os.path.join(output_dir, label, gender)
-    os.makedirs(output_dir_for_id, exist_ok=True)
-
-    output_file = os.path.join(output_dir_for_id, f"{id_name}.json")
+    # Save features to JSON
+    output_file = os.path.join(output_dir, f"{id_name}.json")
+    os.makedirs(output_dir, exist_ok=True)
     with open(output_file, "w") as f:
         json.dump(features, f, indent=4)
     print(f"Saved features for ID {id_name} to {output_file}")
@@ -88,7 +79,7 @@ def process_dataset(input_dir, output_dir):
                 id_path = os.path.join(base_path, id_name)
                 if os.path.isdir(id_path):  # Ensure it's a directory
                     print(f"Processing ID: {id_name} in {label}/{gender}")
-                    process_id(id_path, output_dir, id_name, label, gender)
+                    process_id(id_path, output_dir, id_name)
 
 # Define input and output directories
 INPUT_DIR = "data/augmented"

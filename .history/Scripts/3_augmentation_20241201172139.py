@@ -115,57 +115,56 @@ positive_female_subjects = count_subjects_and_copy(BASE_PATH, OUTPUT_PATH, 'posi
 negative_male_subjects = count_subjects_and_copy(BASE_PATH, OUTPUT_PATH, 'negative', 'male')
 negative_female_subjects = count_subjects_and_copy(BASE_PATH, OUTPUT_PATH, 'negative', 'female')
 
-# Calculate target male and female counts based on original positive ratio
+# Calculate augmentation targets
 total_negatives = len(negative_male_subjects) + len(negative_female_subjects)
-total_target_positives = total_negatives
+target_positives = total_negatives
+total_positives = len(positive_male_subjects) + len(positive_female_subjects)
+augment_needed = target_positives - total_positives
 
-male_ratio = len(positive_male_subjects) / (len(positive_male_subjects) + len(positive_female_subjects))
-female_ratio = 1 - male_ratio
+# Maintain the male:female ratio in augmentation
+male_ratio = len(positive_male_subjects) / total_positives
+female_ratio = len(positive_female_subjects) / total_positives
 
-target_positive_male = int(round(total_target_positives * male_ratio))
-target_positive_female = total_target_positives - target_positive_male
+target_positive_male = int(round(male_ratio * target_positives))
+target_positive_female = target_positives - target_positive_male
 
-augment_male_needed = max(0, target_positive_male - len(positive_male_subjects))
-augment_female_needed = max(0, target_positive_female - len(positive_female_subjects))
-
-print(f"Target Positive Males: {target_positive_male}, Augmentation Needed: {augment_male_needed}")
-print(f"Target Positive Females: {target_positive_female}, Augmentation Needed: {augment_female_needed}")
-
-# Augmentation logic
-def balance_and_augment(subjects, augment_needed, gender, covid_status):
-    """Augment audio files to balance the dataset."""
+# Balance the positive samples while maintaining the ratio
+def balance_and_augment(subjects, target_count, gender, covid_status):
+    """Balance the dataset by augmenting subjects."""
     output_dir = os.path.join(OUTPUT_PATH, covid_status, gender)
     current_count = len(subjects)
 
-    for subject in subjects:
-        if augment_needed <= 0:
-            break
-
+    for i, subject in enumerate(subjects, 1):
         subject_path = os.path.join(BASE_PATH, covid_status, gender, subject)
-        for aug_index in range(1, 5):  # Generate up to 4 augmentations per subject
-            if augment_needed <= 0:
-                break
 
+        # Augment each file type for this subject
+        for aug_index in range(1, 5):  # Generate up to 4 augmentations
             augmented_subject_id = f"{subject}_AUG{aug_index}"
             augmented_subject_path = os.path.join(output_dir, augmented_subject_id)
             os.makedirs(augmented_subject_path, exist_ok=True)
 
             for file_type in ['breathing', 'cough', 'speech']:
+                # Search for files matching the subject and type keywords
                 search_pattern = os.path.join(subject_path, f"{subject}*{file_type}*.flac")
                 matching_files = glob.glob(search_pattern)
 
                 if matching_files:
+                    # Process the first matching file
                     file_path = matching_files[0]
                     print(f"Processing {file_type} file for subject {subject}: {file_path}")
                     augment_audio(file_path, augmented_subject_path, subject, file_type, aug_index)
                 else:
                     print(f"No matching file found for {file_type} in {subject_path}. Skipping.")
 
-            augment_needed -= 1
+            current_count += 1
+            if current_count >= target_count:
+                break
+
+        print(f"Processed {i}/{len(subjects)} {gender} {covid_status} subjects.")
 
 # Augment positive samples
-balance_and_augment(positive_male_subjects, augment_male_needed, 'male', 'positive')
-balance_and_augment(positive_female_subjects, augment_female_needed, 'female', 'positive')
+balance_and_augment(positive_male_subjects, target_positive_male, 'male', 'positive')
+balance_and_augment(positive_female_subjects, target_positive_female, 'female', 'positive')
 
 # Final results
 print(f"Positive male: Original={len(positive_male_subjects)}, Augmented target={target_positive_male}")

@@ -115,21 +115,24 @@ positive_female_subjects = count_subjects_and_copy(BASE_PATH, OUTPUT_PATH, 'posi
 negative_male_subjects = count_subjects_and_copy(BASE_PATH, OUTPUT_PATH, 'negative', 'male')
 negative_female_subjects = count_subjects_and_copy(BASE_PATH, OUTPUT_PATH, 'negative', 'female')
 
-# Calculate target male and female counts based on original positive ratio
+# Calculate total negatives
 total_negatives = len(negative_male_subjects) + len(negative_female_subjects)
-total_target_positives = total_negatives
+total_positives = len(positive_male_subjects) + len(positive_female_subjects)
 
-male_ratio = len(positive_male_subjects) / (len(positive_male_subjects) + len(positive_female_subjects))
-female_ratio = 1 - male_ratio
+# Correct male-to-female ratio calculation based on negatives
+male_ratio = len(negative_male_subjects) / total_negatives
+female_ratio = len(negative_female_subjects) / total_negatives
 
-target_positive_male = int(round(total_target_positives * male_ratio))
-target_positive_female = total_target_positives - target_positive_male
+# Calculate target counts for positive samples
+target_positive_male = int(round(total_negatives * male_ratio))
+target_positive_female = total_negatives - target_positive_male
 
-augment_male_needed = max(0, target_positive_male - len(positive_male_subjects))
-augment_female_needed = max(0, target_positive_female - len(positive_female_subjects))
+# Calculate augmentation needs
+current_positive_male = len(positive_male_subjects)
+current_positive_female = len(positive_female_subjects)
 
-print(f"Target Positive Males: {target_positive_male}, Augmentation Needed: {augment_male_needed}")
-print(f"Target Positive Females: {target_positive_female}, Augmentation Needed: {augment_female_needed}")
+augment_male_needed = max(0, target_positive_male - current_positive_male)
+augment_female_needed = max(0, target_positive_female - current_positive_female)
 
 # Augmentation logic
 def balance_and_augment(subjects, augment_needed, gender, covid_status):
@@ -142,7 +145,7 @@ def balance_and_augment(subjects, augment_needed, gender, covid_status):
             break
 
         subject_path = os.path.join(BASE_PATH, covid_status, gender, subject)
-        for aug_index in range(1, 5):  # Generate up to 4 augmentations per subject
+        for aug_index in range(1, 5):  # Generate up to 4 augmentations
             if augment_needed <= 0:
                 break
 
