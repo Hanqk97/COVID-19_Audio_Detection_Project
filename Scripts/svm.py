@@ -1,11 +1,10 @@
 import os
 import json
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.svm import SVC
-from sklearn.metrics import classification_report
-
+from sklearn.metrics import classification_report, roc_auc_score
 
 # Data loading function
 def load_data(data_dir):
@@ -31,9 +30,7 @@ def load_data(data_dir):
                     ])
                     features.append(feature_vector)
                     labels.append(data['label'])
-
     return np.array(features), np.array(labels)
-
 
 # Load data
 DATA_DIR = '/Users/jonahgloss/Downloads/extracted_feature'
@@ -43,21 +40,34 @@ X, y = load_data(DATA_DIR)
 label_encoder = LabelEncoder()
 y_encoded = label_encoder.fit_transform(y)
 
+# Scale features
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
 # Split data into train and test sets
-X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y_encoded, test_size=0.2, random_state=42)
 
-# Train SVM model
-svm_model = SVC(kernel='linear', random_state=42)
-svm_model.fit(X_train, y_train)
+# Hyperparameter tuning using GridSearchCV
+param_grid = {
+    'C': [0.1, 1, 10, 100],
+    'gamma': [1, 0.1, 0.01, 0.001],
+    'kernel': ['linear', 'rbf', 'poly', 'sigmoid']
+}
 
-# Predict using the trained SVM model
-y_pred = svm_model.predict(X_test)
+grid = GridSearchCV(SVC(class_weight='balanced', random_state=42), param_grid, refit=True, verbose=3, cv=5)
+grid.fit(X_train, y_train)
+
+# Best model from grid search
+best_svm_model = grid.best_estimator_
+
+# Predict using the best SVM model
+y_pred = best_svm_model.predict(X_test)
 
 # Generate classification report
 print("SVM Classification Report:")
 print(classification_report(y_test, y_pred))
+print(f"ROC-AUC Score: {roc_auc_score(y_test, y_pred):.4f}")
 
 # Print success message
 print("SVM model trained and evaluated successfully!")
-
 
